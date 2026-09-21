@@ -31,7 +31,7 @@ Set `TYPESAFE_API_KEY` or pass a key explicitly:
 import SwiftDecision
 import SwiftJev
 
-let backend = try JevDecisionBackend()
+let backend = try SwiftJev.JevDecisionBackend()
 let engine = DecisionEngine(backend: backend)
 let result = try await engine.noul(
     statement: "Is the service unavailable for all customers?",
