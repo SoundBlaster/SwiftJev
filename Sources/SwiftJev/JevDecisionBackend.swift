@@ -1,4 +1,5 @@
 import Foundation
+import SwiftDecision
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif

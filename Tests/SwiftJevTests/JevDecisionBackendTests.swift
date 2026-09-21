@@ -9,7 +9,7 @@ final class JevDecisionBackendTests: XCTestCase {
             "type": "noul",
             "noul": 0.9
         ]))
-        let backend = try JevDecisionBackend(apiKey: "fixture-key", model: "jev-test", transport: transport)
+        let backend = try SwiftJev.JevDecisionBackend(apiKey: "fixture-key", model: "jev-test", transport: transport)
         let prompt = DecisionPrompt(
             id: "case-17",
             kind: .noul,
@@ -52,7 +52,7 @@ final class JevDecisionBackendTests: XCTestCase {
             "confidence": 0.9,
             "probabilities": ["sales": 0.05, "billing": 0.9, "support": 0.05]
         ]))
-        let backend = try JevDecisionBackend(apiKey: "fixture-key", transport: transport)
+        let backend = try SwiftJev.JevDecisionBackend(apiKey: "fixture-key", transport: transport)
         let prompt = DecisionPrompt(
             id: "ticket-1",
             kind: .choice,
@@ -89,7 +89,7 @@ final class JevDecisionBackendTests: XCTestCase {
             "probabilities": ["2": 0.7, "0": 0.1, "1": 0.2],
             "legend": ["0": descriptions[0], "1": descriptions[1], "2": descriptions[2]]
         ]))
-        let backend = try JevDecisionBackend(apiKey: "fixture-key", transport: transport)
+        let backend = try SwiftJev.JevDecisionBackend(apiKey: "fixture-key", transport: transport)
         let prompt = DecisionPrompt(
             id: "answer-review",
             kind: .score,
@@ -108,17 +108,17 @@ final class JevDecisionBackendTests: XCTestCase {
 
     func testHTTPAndMalformedResponseErrorsDoNotIncludeResponseBodyOrCredential() async throws {
         let privateBody = "private response payload"
-        let httpTransport = FixtureJevTransport(response: JevHTTPResponse(
+        let httpTransport = FixtureJevTransport(response: SwiftJev.JevHTTPResponse(
             statusCode: 429,
             body: Data(privateBody.utf8)
         ))
-        let backend = try JevDecisionBackend(apiKey: "fixture-secret", transport: httpTransport)
+        let backend = try SwiftJev.JevDecisionBackend(apiKey: "fixture-secret", transport: httpTransport)
         let prompt = validNoulPrompt
 
         do {
             _ = try await backend.predict(for: prompt)
             XCTFail("Expected an HTTP error")
-        } catch let error as JevDecisionBackendError {
+        } catch let error as SwiftJev.JevDecisionBackendError {
             XCTAssertEqual(error, .httpFailure(statusCode: 429))
             XCTAssertFalse(error.localizedDescription.contains(privateBody))
             XCTAssertFalse(error.localizedDescription.contains("fixture-secret"))
@@ -130,11 +130,11 @@ final class JevDecisionBackendTests: XCTestCase {
             "confidence": 0.9,
             "probabilities": ["false": 0.1, "true": 0.9]
         ]))
-        let malformedBackend = try JevDecisionBackend(apiKey: "fixture-secret", transport: malformedTransport)
+        let malformedBackend = try SwiftJev.JevDecisionBackend(apiKey: "fixture-secret", transport: malformedTransport)
         do {
             _ = try await malformedBackend.predict(for: prompt)
             XCTFail("Expected a protocol error for the wrong answer type")
-        } catch let error as JevDecisionBackendError {
+        } catch let error as SwiftJev.JevDecisionBackendError {
             XCTAssertEqual(error, .malformedResponse)
             XCTAssertFalse(error.localizedDescription.contains("fixture-secret"))
         }
@@ -145,14 +145,14 @@ final class JevDecisionBackendTests: XCTestCase {
             "type": "noul",
             "noul": 0.9
         ]))
-        XCTAssertThrowsError(try JevDecisionBackend(apiKey: "", transport: transport)) { error in
-            XCTAssertEqual(error as? JevDecisionBackendError, .missingAPIKey)
+        XCTAssertThrowsError(try SwiftJev.JevDecisionBackend(apiKey: "", transport: transport)) { error in
+            XCTAssertEqual(error as? SwiftJev.JevDecisionBackendError, .missingAPIKey)
         }
-        XCTAssertThrowsError(try JevDecisionBackend(apiKey: "fixture-key", timeout: .infinity, transport: transport)) { error in
-            XCTAssertEqual(error as? JevDecisionBackendError, .invalidConfiguration("timeout must be finite and positive"))
+        XCTAssertThrowsError(try SwiftJev.JevDecisionBackend(apiKey: "fixture-key", timeout: .infinity, transport: transport)) { error in
+            XCTAssertEqual(error as? SwiftJev.JevDecisionBackendError, .invalidConfiguration("timeout must be finite and positive"))
         }
 
-        let backend = try JevDecisionBackend(apiKey: "fixture-key", transport: transport)
+        let backend = try SwiftJev.JevDecisionBackend(apiKey: "fixture-key", transport: transport)
         let invalidNoul = DecisionPrompt(
             id: "invalid",
             kind: .noul,
@@ -163,7 +163,7 @@ final class JevDecisionBackendTests: XCTestCase {
         do {
             _ = try await backend.predict(for: invalidNoul)
             XCTFail("Expected unsupported Noul option identifiers to fail")
-        } catch let error as JevDecisionBackendError {
+        } catch let error as SwiftJev.JevDecisionBackendError {
             XCTAssertEqual(error, .unsupportedPrompt("Noul requires the ordered false and true options"))
         }
         let requests = await transport.receivedRequests()
@@ -171,14 +171,14 @@ final class JevDecisionBackendTests: XCTestCase {
     }
 
     func testOptInLiveJevNoulChoiceAndScore() async throws {
-        guard ProcessInfo.processInfo.environment["SWIFTDECISION_LIVE_JEV"] == "1" else {
-            throw XCTSkip("Set SWIFTDECISION_LIVE_JEV=1 and TYPESAFE_API_KEY to send live, billable Jev requests")
+        guard ProcessInfo.processInfo.environment["SWIFTJEV_LIVE_JEV"] == "1" else {
+            throw XCTSkip("Set SWIFTJEV_LIVE_JEV=1 and TYPESAFE_API_KEY to send live, billable Jev requests")
         }
         guard let key = ProcessInfo.processInfo.environment["TYPESAFE_API_KEY"], !key.isEmpty else {
             throw XCTSkip("Set TYPESAFE_API_KEY to run the live Jev smoke test")
         }
 
-        let engine = DecisionEngine(backend: try JevDecisionBackend(apiKey: key))
+        let engine = DecisionEngine(backend: try SwiftJev.JevDecisionBackend(apiKey: key))
         let noul = try await engine.noul(
             statement: "Is the service unavailable for all customers?",
             context: "The status page reports that all customers are unable to sign in."
@@ -225,12 +225,12 @@ final class JevDecisionBackendTests: XCTestCase {
         )
     }
 
-    private func response(answer: [String: Any], model: String = "jev-fixture") throws -> JevHTTPResponse {
+    private func response(answer: [String: Any], model: String = "jev-fixture") throws -> SwiftJev.JevHTTPResponse {
         let body = try JSONSerialization.data(withJSONObject: [
             "model": model,
             "answers": ["swiftdecision": answer]
         ])
-        return JevHTTPResponse(
+        return SwiftJev.JevHTTPResponse(
             statusCode: 200,
             headers: ["x-typesafe-request-id": "fixture-request"],
             body: body
@@ -238,18 +238,18 @@ final class JevDecisionBackendTests: XCTestCase {
     }
 }
 
-private actor FixtureJevTransport: JevHTTPTransport {
-    private let response: JevHTTPResponse
-    private var requests: [JevHTTPRequest] = []
+private actor FixtureJevTransport: SwiftJev.JevHTTPTransport {
+    private let response: SwiftJev.JevHTTPResponse
+    private var requests: [SwiftJev.JevHTTPRequest] = []
 
-    init(response: JevHTTPResponse) {
+    init(response: SwiftJev.JevHTTPResponse) {
         self.response = response
     }
 
-    func send(_ request: JevHTTPRequest) async throws -> JevHTTPResponse {
+    func send(_ request: SwiftJev.JevHTTPRequest) async throws -> SwiftJev.JevHTTPResponse {
         requests.append(request)
         return response
     }
 
-    func receivedRequests() -> [JevHTTPRequest] { requests }
+    func receivedRequests() -> [SwiftJev.JevHTTPRequest] { requests }
 }

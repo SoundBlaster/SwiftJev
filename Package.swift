@@ -12,10 +12,10 @@ let package = Package(
     ],
     products: [
         .library(name: "SwiftJev", targets: ["SwiftJev"]),
-        .executable(name: "JevBenchmark", targets: ["JevBenchmark"])
+        .executable(name: "JevBenchmark", targets: ["SwiftJevBenchmark"])
     ],
     dependencies: [
-        .package(url: "https://github.com/SoundBlaster/SwiftDecision.git", exact: "0.1.0")
+        .package(url: "https://github.com/SoundBlaster/SwiftDecision.git", from: "0.1.0")
     ],
     targets: [
         .target(
@@ -25,7 +25,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "JevBenchmark",
+            name: "SwiftJevBenchmark",
             dependencies: ["SwiftJev", .product(name: "SwiftDecision", package: "SwiftDecision")],
             path: "Benchmarks/JevBenchmark"
         ),

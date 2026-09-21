@@ -48,8 +48,8 @@ enum JevBenchmark {
 
     private static func run() async throws {
         let environment = ProcessInfo.processInfo.environment
-        guard environment["SWIFTDECISION_RUN_JEV_BENCHMARKS"] == "1" else {
-            throw BenchmarkError("Set SWIFTDECISION_RUN_JEV_BENCHMARKS=1 to enable billable live Jev requests.")
+        guard environment["SWIFTJEV_RUN_JEV_BENCHMARKS"] == "1" else {
+            throw BenchmarkError("Set SWIFTJEV_RUN_JEV_BENCHMARKS=1 to enable billable live Jev requests.")
         }
         guard let apiKey = environment["TYPESAFE_API_KEY"], !apiKey.isEmpty else {
             throw BenchmarkError("Set TYPESAFE_API_KEY before running the live Jev benchmark.")
@@ -60,7 +60,7 @@ enum JevBenchmark {
         print("Live Jev benchmark: \(sampleCount) samples per kind, \(totalRequests) total requests including warm-ups.")
         print("Requests are sent sequentially and may incur TypeSafe API usage. No prompts or credentials are printed.")
 
-        let engine = DecisionEngine(backend: try JevDecisionBackend(apiKey: apiKey))
+        let engine = DecisionEngine(backend: try SwiftJev.JevDecisionBackend(apiKey: apiKey))
         let scenarios = [
             Scenario(name: "Noul") {
                 let result = try await engine.noul(

@@ -51,7 +51,7 @@ export TYPESAFE_API_KEY="your-api-key"
 The benchmark is opt-in because requests are billable:
 
 ```sh
-SWIFTJEV_RUN_BENCHMARKS=1 TYPESAFE_API_KEY="$TYPESAFE_API_KEY" \
+SWIFTJEV_RUN_JEV_BENCHMARKS=1 TYPESAFE_API_KEY="$TYPESAFE_API_KEY" \
   swift run --disable-sandbox JevBenchmark --samples 20
 ```
 
