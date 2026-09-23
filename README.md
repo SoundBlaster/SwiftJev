@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/SoundBlaster/SwiftJev/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SoundBlaster/SwiftJev/actions/workflows/ci.yml)
 [![Swift 6.3+](https://img.shields.io/badge/Swift-6.3%2B-orange?logo=swift)](https://www.swift.org)
-[![Apple platforms](https://img.shields.io/badge/Apple%20platforms-macOS%2010.15%2B%20%7C%20iOS%2013%2B%20%7C%20tvOS%2013%2B%20%7C%20watchOS%206%2B-lightgrey?logo=apple)](https://developer.apple.com)
+[![Apple platforms](https://img.shields.io/badge/Apple%20platforms-macOS%2010.15%2B%20%7C%20iOS%2015%2B%20%7C%20tvOS%2013%2B%20%7C%20watchOS%206%2B-lightgrey?logo=apple)](https://developer.apple.com)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 `SwiftJev` is the TypeSafe Jev provider for [SwiftDecision](https://github.com/SoundBlaster/SwiftDecision). It sends typed Noul, Choice, and Score prompts to the hosted System One API and returns validated probability distributions through SwiftDecision's `DecisionBackend` protocol.
@@ -41,6 +41,8 @@ print(result.value, result.probabilities)
 ```
 
 The backend validates every prompt and response against the Jev Noul, Choice, and Score contracts. It preserves prompt option order, rejects redirects, checks cancellation, and never includes credentials or response bodies in errors. HTTP transport is injectable for deterministic tests; no network requests happen during initialization.
+
+For iOS apps, store a user-provided API key in Keychain and pass it explicitly to `JevDecisionBackend`. See the [iOS Keychain runbook](Documentation/iOS-Keychain-Runbook.md). Do not ship a shared provider key inside an app binary.
 
 ```sh
 export TYPESAFE_API_KEY="your-api-key"

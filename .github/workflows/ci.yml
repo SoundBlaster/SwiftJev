@@ -35,6 +35,7 @@ jobs:
           [[ "$swift_version" == *"Swift version 6.4"* ]]
       - name: Build
         run: swift build
+      - name: Build iOS Simulator target (iOS 15+)
+        run: swift build --target SwiftJev --triple arm64-apple-ios15.0-simulator
       - name: Run tests
         run: swift test
-
