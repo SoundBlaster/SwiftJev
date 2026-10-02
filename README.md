@@ -66,3 +66,14 @@ SwiftJev owns the provider and HTTP transport. SwiftDecision owns typed decision
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
+### Failure classification
+
+`JevFailureClassifier.classify(error)` returns a `DecisionFailureCategory` without
+changing the thrown error. Cancellation, authentication, TLS, malformed responses,
+and invalid configuration are not transient. Timeouts, selected connectivity
+errors, HTTP 429, 408, 425 and 5xx are classified separately. This is descriptive:
+the caller decides whether to retry or use a fallback. No automatic recovery is
+added to `predict`. For a total deadline across several inferences, pass the same
+SwiftDecision `DecisionBudget` to each engine call; HTTP timeout is an inactivity
+limit and does not replace that budget.

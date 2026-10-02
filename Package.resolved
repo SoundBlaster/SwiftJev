@@ -1,13 +1,13 @@
 {
-  "originHash" : "a42cc9e9d5f663f75a89ab9e248320d53db6d3e1b0220a8566a3ae12cde44a56",
+  "originHash" : "95aa27f11a7206d9ceee716b8cc2ae67f9dda1e4fceefb38f372e7c9ce30706a",
   "pins" : [
     {
       "identity" : "specificationcore",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/SoundBlaster/SpecificationCore.git",
       "state" : {
-        "revision" : "f3ed68ce29db42de54a4ae905a304b61bdc50ce7",
-        "version" : "1.1.0"
+        "revision" : "9b5fc40c16677e868856d0b24b70019cd5ea4687",
+        "version" : "2.1.0"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swiftlang/swift-syntax",
       "state" : {
-        "revision" : "2bc86522d115234d1f588efe2bcb4ce4be8f8b82",
-        "version" : "510.0.3"
+        "revision" : "f99ae8aa18f0cf0d53481901f88a0991dc3bd4a2",
+        "version" : "601.0.1"
       }
     },
     {
@@ -24,8 +24,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/SoundBlaster/SwiftDecision.git",
       "state" : {
-        "revision" : "7af9416e1ac486ae63ae545db753b1b34b46500f",
-        "version" : "0.1.0"
+        "revision" : "77171f9151eee022b268ce761d115298aa97860f"
       }
     }
   ],
