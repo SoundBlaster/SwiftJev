@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add `JevFailureClassifier` returning provider-independent failure categories without retry or fallback policy.
+- Integrate the SwiftDecision shared-budget API via an immutable prerelease revision; replace with a release requirement after the dependency PR lands.
+
 ## 0.2.0
 
 ### Changed
