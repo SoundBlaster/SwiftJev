@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+
+- Support configurable HTTPS API roots for TypeSafe-compatible providers and proxies, including CoreInfra Hub. The backend appends `/systemone` to the configured API root; the default remains `https://api.typesafe.ai/v1`.
+
 ## 0.3.0
 
 - Add `JevFailureClassifier` returning provider-independent failure categories without retry or fallback policy.
