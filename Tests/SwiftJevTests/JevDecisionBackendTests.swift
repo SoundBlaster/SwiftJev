@@ -194,6 +194,47 @@ final class JevDecisionBackendTests: XCTestCase {
         XCTAssertEqual(result.probabilities.reduce(0, +), 1, accuracy: 0.01)
     }
 
+    func testOptInLiveCustomBaseURLChoiceAndScore() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["SWIFTJEV_LIVE_PROXY"] == "1" else {
+            throw XCTSkip("Set SWIFTJEV_LIVE_PROXY=1 to send billable Choice and Score requests to a custom API root")
+        }
+        guard let key = environment["COREINFRA_API_KEY"] ?? environment["TYPESAFE_API_KEY"], !key.isEmpty else {
+            throw XCTSkip("Set COREINFRA_API_KEY or TYPESAFE_API_KEY to run the live proxy smoke test")
+        }
+        let baseURLString = environment["SWIFTJEV_BASE_URL"] ?? "https://hub.coreinfra.ai/typesafe/api/v1"
+        guard let baseURL = URL(string: baseURLString) else {
+            throw XCTSkip("SWIFTJEV_BASE_URL must be a valid HTTPS URL")
+        }
+
+        let engine = DecisionEngine(backend: try SwiftJev.JevDecisionBackend(apiKey: key, baseURL: baseURL))
+        let context = "Customer ticket: My invoice shows two charges for the same purchase, and I ask for the extra charge to be refunded. Agent response: We found the duplicate charge and submitted a refund for the extra payment. It should appear within five business days."
+        let choice = try await engine.choice(
+            instructions: "Which team should handle this ticket?",
+            context: context,
+            options: [
+                ChoiceOption(label: "billing", description: "Invoices, duplicate charges, payments, and refunds."),
+                ChoiceOption(label: "support", description: "Account access, technical issues, and product use.")
+            ]
+        )
+        let score = try await engine.score(
+            instructions: "How well does the response address the duplicate-charge request?",
+            context: context,
+            levels: [
+                (description: "Does not address the duplicate charge or refund.", value: 0),
+                (description: "Mentions the charge but gives no clear action or next step.", value: 1),
+                (description: "Confirms the duplicate charge and explains the refund action or next step.", value: 2)
+            ]
+        )
+
+        for probabilities in [choice.probabilities, score.probabilities] {
+            XCTAssertTrue(probabilities.allSatisfy { $0.isFinite && $0 >= 0 })
+            XCTAssertEqual(probabilities.reduce(0, +), 1, accuracy: 0.01)
+        }
+        XCTAssertEqual(choice.probabilities.count, 2)
+        XCTAssertEqual(score.probabilities.count, 3)
+    }
+
     func testOptInLiveJevNoulChoiceAndScore() async throws {
         guard ProcessInfo.processInfo.environment["SWIFTJEV_LIVE_JEV"] == "1" else {
             throw XCTSkip("Set SWIFTJEV_LIVE_JEV=1 and TYPESAFE_API_KEY to send live, billable Jev requests")
