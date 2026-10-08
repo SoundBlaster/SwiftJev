@@ -42,6 +42,19 @@ print(result.value, result.probabilities)
 
 The backend validates every prompt and response against the Jev Noul, Choice, and Score contracts. It preserves prompt option order, rejects redirects, checks cancellation, and never includes credentials or response bodies in errors. HTTP transport is injectable for deterministic tests; no network requests happen during initialization.
 
+## Custom API roots and proxies
+
+The backend defaults to `https://api.typesafe.ai/v1`. To use a compatible proxy such as CoreInfra Hub, pass its HTTPS API root; SwiftJev appends `/systemone`:
+
+```swift
+let backend = try SwiftJev.JevDecisionBackend(
+    apiKey: ProcessInfo.processInfo.environment["COREINFRA_API_KEY"],
+    baseURL: URL(string: "https://hub.coreinfra.ai/typesafe/api/v1")!
+)
+```
+
+The proxy must accept the TypeSafe System One request and response contract. Keep API keys in the host environment or Keychain; do not embed a shared key in an app binary.
+
 For iOS apps, store a user-provided API key in Keychain and pass it explicitly to `JevDecisionBackend`. See the [iOS Keychain runbook](Documentation/iOS-Keychain-Runbook.md). Do not ship a shared provider key inside an app binary.
 
 ```sh

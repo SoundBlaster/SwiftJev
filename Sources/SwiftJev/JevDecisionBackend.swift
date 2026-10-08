@@ -8,7 +8,7 @@ import FoundationNetworking
 ///
 /// The headers include the bearer credential. Transports must not log this value.
 public struct JevHTTPRequest: Sendable, Equatable {
-    /// Official Jev API endpoint.
+    /// Jev API endpoint.
     public let url: URL
 
     /// HTTP method used for this request.
@@ -164,28 +164,30 @@ public enum JevDecisionBackendError: Error, Sendable, Equatable, CustomStringCon
 
 /// TypeSafe Jev backend for Noul, Choice, and Score decisions.
 ///
-/// The API key is read from `TYPESAFE_API_KEY` unless supplied explicitly. Requests are sent only
-/// to the official HTTPS endpoint, redirects are rejected, and response bodies are never included
-/// in errors. No retries or live requests happen during initialization.
+/// The API key is read from `TYPESAFE_API_KEY` unless supplied explicitly. Requests are sent to the
+/// configured HTTPS API root, redirects are rejected, and response bodies are never included in
+/// errors. No retries or live requests happen during initialization.
 public struct JevDecisionBackend: DecisionBackend {
-    private static let endpoint = URL(string: "https://api.typesafe.ai/v1/systemone")!
     private static let questionID = "swiftdecision"
 
     private let apiKey: String
     private let model: String
     private let timeout: TimeInterval
+    private let endpoint: URL
     private let transport: any JevHTTPTransport
 
     /// Creates a Jev backend.
     ///
     /// - Parameters:
-    ///   - apiKey: TypeSafe API key. When omitted, `TYPESAFE_API_KEY` is read from the environment.
+    ///   - apiKey: API key. When omitted, `TYPESAFE_API_KEY` is read from the environment.
     ///   - model: TypeSafe model identifier. Defaults to `jev-latest`.
+    ///   - baseURL: HTTPS API root ending before `/systemone`. Defaults to the official TypeSafe API.
     ///   - timeout: Per-request timeout in seconds.
     ///   - transport: HTTP transport. The default uses URLSession; inject a mock for offline tests.
     public init(
         apiKey: String? = nil,
         model: String = "jev-latest",
+        baseURL: URL = URL(string: "https://api.typesafe.ai/v1")!,
         timeout: TimeInterval = 10,
         transport: any JevHTTPTransport = URLSessionJevHTTPTransport()
     ) throws {
@@ -199,12 +201,32 @@ public struct JevDecisionBackend: DecisionBackend {
         guard !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw JevDecisionBackendError.invalidConfiguration("model must be nonempty")
         }
+        guard let components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false),
+              components.scheme?.lowercased() == "https",
+              components.host != nil,
+              components.user == nil,
+              components.password == nil,
+              components.query == nil,
+              components.fragment == nil
+        else {
+            throw JevDecisionBackendError.invalidConfiguration(
+                "baseURL must be an absolute HTTPS URL without credentials, query, or fragment"
+            )
+        }
+        var endpointComponents = components
+        endpointComponents.path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        if !endpointComponents.path.isEmpty { endpointComponents.path += "/" }
+        endpointComponents.path += "systemone"
+        guard let endpoint = endpointComponents.url else {
+            throw JevDecisionBackendError.invalidConfiguration("baseURL could not form the System One endpoint")
+        }
         guard timeout.isFinite, timeout > 0 else {
             throw JevDecisionBackendError.invalidConfiguration("timeout must be finite and positive")
         }
         self.apiKey = resolvedAPIKey
         self.model = model
         self.timeout = timeout
+        self.endpoint = endpoint
         self.transport = transport
     }
 
