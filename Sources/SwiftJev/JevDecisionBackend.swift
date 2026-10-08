@@ -214,9 +214,8 @@ public struct JevDecisionBackend: DecisionBackend {
             )
         }
         var endpointComponents = components
-        endpointComponents.path = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        if !endpointComponents.path.isEmpty { endpointComponents.path += "/" }
-        endpointComponents.path += "systemone"
+        let basePath = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        endpointComponents.path = basePath.isEmpty ? "/systemone" : "/\(basePath)/systemone"
         guard let endpoint = endpointComponents.url else {
             throw JevDecisionBackendError.invalidConfiguration("baseURL could not form the System One endpoint")
         }
@@ -251,7 +250,7 @@ public struct JevDecisionBackend: DecisionBackend {
         }
 
         let request = JevHTTPRequest(
-            url: Self.endpoint,
+            url: endpoint,
             method: "POST",
             headers: [
                 "Accept": "application/json",

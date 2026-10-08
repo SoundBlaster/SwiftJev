@@ -170,6 +170,30 @@ final class JevDecisionBackendTests: XCTestCase {
         XCTAssertTrue(requests.isEmpty)
     }
 
+    func testOptInLiveCustomBaseURLNoul() async throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["SWIFTJEV_LIVE_PROXY"] == "1" else {
+            throw XCTSkip("Set SWIFTJEV_LIVE_PROXY=1 to send one billable Noul request to a custom API root")
+        }
+        guard let key = environment["COREINFRA_API_KEY"] ?? environment["TYPESAFE_API_KEY"], !key.isEmpty else {
+            throw XCTSkip("Set COREINFRA_API_KEY or TYPESAFE_API_KEY to run the live proxy smoke test")
+        }
+        let baseURLString = environment["SWIFTJEV_BASE_URL"] ?? "https://hub.coreinfra.ai/typesafe/api/v1"
+        guard let baseURL = URL(string: baseURLString) else {
+            throw XCTSkip("SWIFTJEV_BASE_URL must be a valid HTTPS URL")
+        }
+
+        let engine = DecisionEngine(backend: try SwiftJev.JevDecisionBackend(apiKey: key, baseURL: baseURL))
+        let result = try await engine.noul(
+            statement: "Does CoreInfra support Jev?",
+            context: "CoreInfra provides Jev through its Hub API."
+        )
+
+        XCTAssertEqual(result.probabilities.count, 2)
+        XCTAssertTrue(result.probabilities.allSatisfy { $0.isFinite && $0 >= 0 })
+        XCTAssertEqual(result.probabilities.reduce(0, +), 1, accuracy: 0.01)
+    }
+
     func testOptInLiveJevNoulChoiceAndScore() async throws {
         guard ProcessInfo.processInfo.environment["SWIFTJEV_LIVE_JEV"] == "1" else {
             throw XCTSkip("Set SWIFTJEV_LIVE_JEV=1 and TYPESAFE_API_KEY to send live, billable Jev requests")
