@@ -12,7 +12,7 @@
 ```swift
 dependencies: [
     .package(url: "https://github.com/SoundBlaster/SwiftJev.git", from: "0.4.0"),
-    .package(url: "https://github.com/SoundBlaster/SwiftDecision.git", from: "0.6.0")
+    .package(url: "https://github.com/SoundBlaster/SwiftDecision.git", from: "0.7.0")
 ]
 ```
 

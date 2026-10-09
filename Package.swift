@@ -15,7 +15,7 @@ let package = Package(
         .executable(name: "JevBenchmark", targets: ["SwiftJevBenchmark"])
     ],
     dependencies: [
-        .package(url: "https://github.com/SoundBlaster/SwiftDecision.git", from: "0.6.0")
+        .package(url: "https://github.com/SoundBlaster/SwiftDecision.git", from: "0.7.0")
     ],
     targets: [
         .target(

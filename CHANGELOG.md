@@ -2,6 +2,10 @@
 
 ## 0.4.0
 
+### Changed
+
+- Raise the minimum SwiftDecision dependency to 0.7.0.
+
 ### Added
 
 - Support configurable HTTPS API roots for TypeSafe-compatible providers and proxies, including CoreInfra Hub. The backend appends `/systemone` to the configured API root; the default remains `https://api.typesafe.ai/v1`.
