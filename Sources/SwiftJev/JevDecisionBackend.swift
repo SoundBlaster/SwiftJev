@@ -175,6 +175,7 @@ public struct JevDecisionBackend: DecisionBackend {
     private let timeout: TimeInterval
     private let endpoint: URL
     private let transport: any JevHTTPTransport
+    private let maximumChoiceProbabilityGap: Double?
 
     /// Creates a Jev backend.
     ///
@@ -184,12 +185,17 @@ public struct JevDecisionBackend: DecisionBackend {
     ///   - baseURL: HTTPS API root ending before `/systemone`. Defaults to the official TypeSafe API.
     ///   - timeout: Per-request timeout in seconds.
     ///   - transport: HTTP transport. The default uses URLSession; inject a mock for offline tests.
+    ///   - maximumChoiceProbabilityGap: How far the API's `choice` label may fall below the highest
+    ///     probability before a Choice response is rejected as malformed. The default `nil` follows the
+    ///     TypeSafe API and accepts any `choice` that names a prompt option, because the API can return a
+    ///     near-tie `choice` that is not the most probable label. Pass `0` to require the strict argmax.
     public init(
         apiKey: String? = nil,
         model: String = "jev-latest",
         baseURL: URL = URL(string: "https://api.typesafe.ai/v1")!,
         timeout: TimeInterval = 10,
-        transport: any JevHTTPTransport = URLSessionJevHTTPTransport()
+        transport: any JevHTTPTransport = URLSessionJevHTTPTransport(),
+        maximumChoiceProbabilityGap: Double? = nil
     ) throws {
         let resolvedAPIKey = apiKey ?? ProcessInfo.processInfo.environment["TYPESAFE_API_KEY"]
         guard let resolvedAPIKey,
@@ -222,11 +228,19 @@ public struct JevDecisionBackend: DecisionBackend {
         guard timeout.isFinite, timeout > 0 else {
             throw JevDecisionBackendError.invalidConfiguration("timeout must be finite and positive")
         }
+        if let maximumChoiceProbabilityGap {
+            guard maximumChoiceProbabilityGap.isFinite, (0 ... 1).contains(maximumChoiceProbabilityGap) else {
+                throw JevDecisionBackendError.invalidConfiguration(
+                    "maximumChoiceProbabilityGap must be between 0 and 1"
+                )
+            }
+        }
         self.apiKey = resolvedAPIKey
         self.model = model
         self.timeout = timeout
         self.endpoint = endpoint
         self.transport = transport
+        self.maximumChoiceProbabilityGap = maximumChoiceProbabilityGap
     }
 
     /// Sends one typed decision and maps its probability distribution to prompt option order.
@@ -353,9 +367,12 @@ public struct JevDecisionBackend: DecisionBackend {
             }
             let values = try orderedProbabilities(rawProbabilities, options: prompt.options)
             try validateDistribution(values)
-            guard let selectedProbability = rawProbabilities[choice],
-                  selectedProbability == values.max()
-            else {
+            guard let selectedProbability = rawProbabilities[choice] else {
+                throw JevDecisionBackendError.malformedResponse
+            }
+            if let maximumChoiceProbabilityGap,
+               let maximumProbability = values.max(),
+               maximumProbability - selectedProbability > maximumChoiceProbabilityGap {
                 throw JevDecisionBackendError.malformedResponse
             }
             return values

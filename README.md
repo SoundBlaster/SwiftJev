@@ -42,6 +42,14 @@ print(result.value, result.probabilities)
 
 The backend validates every prompt and response against the Jev Noul, Choice, and Score contracts. It preserves prompt option order, rejects redirects, checks cancellation, and never includes credentials or response bodies in errors. HTTP transport is injectable for deterministic tests; no network requests happen during initialization.
 
+## Choice responses
+
+For Choice prompts, SwiftJev returns the full probability distribution in prompt option order, and SwiftDecision picks the answer from that distribution under its own acceptance policy. By default the API's `choice` label only has to name one of the prompt options, matching the TypeSafe API, which can return a near-tie `choice` slightly below the highest probability. To reject responses whose `choice` falls too far below the most probable option, set a gap; `0` requires the strict argmax:
+
+```swift
+let backend = try SwiftJev.JevDecisionBackend(maximumChoiceProbabilityGap: 0.02)
+```
+
 ## Custom API roots and proxies
 
 The backend defaults to `https://api.typesafe.ai/v1`. To use a compatible proxy such as CoreInfra Hub, pass its HTTPS API root; SwiftJev appends `/systemone`:

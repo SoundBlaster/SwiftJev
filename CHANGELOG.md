@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add `maximumChoiceProbabilityGap` to `JevDecisionBackend.init`. It defaults to `nil` (accept any `choice` that names a prompt option); set it to reject Choice responses whose `choice` falls more than that amount below the highest probability, or `0` to require the strict argmax.
+
+### Fixed
+
+- Accept Choice responses whose `choice` label is not the most probable one, matching the TypeSafe API. The API can return a near-tie `choice` slightly below the highest probability, which previously failed with `malformedResponse`. The returned distribution is unchanged.
+- Replace the MIT `LICENSE` file with the Apache License 2.0 text, matching the README and SwiftDecision.
+
 ## 0.4.0
 
 ### Changed

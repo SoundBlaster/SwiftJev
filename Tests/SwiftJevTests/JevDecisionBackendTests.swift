@@ -80,6 +80,68 @@ final class JevDecisionBackendTests: XCTestCase {
         ])
     }
 
+    func testChoiceFollowsAPIChoiceByDefaultAndAppliesConfiguredProbabilityGap() async throws {
+        let prompt = DecisionPrompt(
+            id: "ticket-2",
+            kind: .choice,
+            instructions: "Choose the team.",
+            context: "I cannot log in to see my invoice.",
+            options: [
+                DecisionOption(id: "support", description: "Account access and product help."),
+                DecisionOption(id: "billing", description: "Invoices, refunds, and charges.")
+            ]
+        )
+        let nearTie = try response(answer: [
+            "type": "choice",
+            "choice": "billing",
+            "confidence": 0.495,
+            "probabilities": ["support": 0.505, "billing": 0.495]
+        ])
+        let farBelow = try response(answer: [
+            "type": "choice",
+            "choice": "billing",
+            "confidence": 0.2,
+            "probabilities": ["support": 0.8, "billing": 0.2]
+        ])
+
+        func predict(_ response: SwiftJev.JevHTTPResponse, gap: Double?) async throws -> [Double] {
+            let backend = try SwiftJev.JevDecisionBackend(
+                apiKey: "fixture-key",
+                transport: FixtureJevTransport(response: response),
+                maximumChoiceProbabilityGap: gap
+            )
+            return try await backend.predict(for: prompt).probabilities
+        }
+
+        let defaultNearTie = try await predict(nearTie, gap: nil)
+        XCTAssertEqual(defaultNearTie, [0.505, 0.495])
+        let defaultFarBelow = try await predict(farBelow, gap: nil)
+        XCTAssertEqual(defaultFarBelow, [0.8, 0.2])
+        let toleratedNearTie = try await predict(nearTie, gap: 0.02)
+        XCTAssertEqual(toleratedNearTie, [0.505, 0.495])
+
+        for (response, gap) in [(farBelow, 0.02), (nearTie, 0.0)] {
+            do {
+                _ = try await predict(response, gap: gap)
+                XCTFail("Expected a protocol error when choice is more than \(gap) below the maximum")
+            } catch let error as SwiftJev.JevDecisionBackendError {
+                XCTAssertEqual(error, .malformedResponse)
+            }
+        }
+
+        for gap in [-0.01, 1.01, Double.nan, Double.infinity] {
+            XCTAssertThrowsError(try SwiftJev.JevDecisionBackend(
+                apiKey: "fixture-key",
+                transport: FixtureJevTransport(response: nearTie),
+                maximumChoiceProbabilityGap: gap
+            )) { error in
+                guard case .invalidConfiguration = error as? SwiftJev.JevDecisionBackendError else {
+                    return XCTFail("Expected invalidConfiguration, got \(error)")
+                }
+            }
+        }
+    }
+
     func testScoreMapsOrderedRubricDistributionAndValidatesLegend() async throws {
         let descriptions = ["Does not answer.", "Partially answers.", "Fully answers."]
         let transport = FixtureJevTransport(response: try response(answer: [
