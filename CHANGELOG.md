@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Accept `choice` responses whose selected label is within 0.02 of the highest probability. The TypeSafe API can return a near-tie `choice` that is not the strict argmax, which previously failed with `malformedResponse`.
+- Replace the MIT `LICENSE` file with the Apache License 2.0 text, matching the README and SwiftDecision.
+
 ## 0.4.0
 
 ### Changed

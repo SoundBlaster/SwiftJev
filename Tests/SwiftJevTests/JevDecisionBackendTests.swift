@@ -80,6 +80,43 @@ final class JevDecisionBackendTests: XCTestCase {
         ])
     }
 
+    func testChoiceAcceptsNearTieChoiceButRejectsChoiceFarBelowMaximum() async throws {
+        let prompt = DecisionPrompt(
+            id: "ticket-2",
+            kind: .choice,
+            instructions: "Choose the team.",
+            context: "I cannot log in to see my invoice.",
+            options: [
+                DecisionOption(id: "support", description: "Account access and product help."),
+                DecisionOption(id: "billing", description: "Invoices, refunds, and charges.")
+            ]
+        )
+
+        let nearTieTransport = FixtureJevTransport(response: try response(answer: [
+            "type": "choice",
+            "choice": "billing",
+            "confidence": 0.495,
+            "probabilities": ["support": 0.505, "billing": 0.495]
+        ]))
+        let nearTieBackend = try SwiftJev.JevDecisionBackend(apiKey: "fixture-key", transport: nearTieTransport)
+        let prediction = try await nearTieBackend.predict(for: prompt)
+        XCTAssertEqual(prediction.probabilities, [0.505, 0.495])
+
+        let farTransport = FixtureJevTransport(response: try response(answer: [
+            "type": "choice",
+            "choice": "billing",
+            "confidence": 0.2,
+            "probabilities": ["support": 0.8, "billing": 0.2]
+        ]))
+        let farBackend = try SwiftJev.JevDecisionBackend(apiKey: "fixture-key", transport: farTransport)
+        do {
+            _ = try await farBackend.predict(for: prompt)
+            XCTFail("Expected a protocol error when choice is far below the maximum probability")
+        } catch let error as SwiftJev.JevDecisionBackendError {
+            XCTAssertEqual(error, .malformedResponse)
+        }
+    }
+
     func testScoreMapsOrderedRubricDistributionAndValidatesLegend() async throws {
         let descriptions = ["Does not answer.", "Partially answers.", "Fully answers."]
         let transport = FixtureJevTransport(response: try response(answer: [

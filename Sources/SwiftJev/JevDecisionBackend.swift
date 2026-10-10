@@ -353,8 +353,11 @@ public struct JevDecisionBackend: DecisionBackend {
             }
             let values = try orderedProbabilities(rawProbabilities, options: prompt.options)
             try validateDistribution(values)
+            // The API can return a `choice` slightly below the top probability on near ties,
+            // so accept any choice within tolerance of the maximum instead of the strict argmax.
             guard let selectedProbability = rawProbabilities[choice],
-                  selectedProbability == values.max()
+                  let maximumProbability = values.max(),
+                  maximumProbability - selectedProbability <= 0.02
             else {
                 throw JevDecisionBackendError.malformedResponse
             }
