@@ -164,9 +164,9 @@ public enum JevDecisionBackendError: Error, Sendable, Equatable, CustomStringCon
 
 /// TypeSafe Jev backend for Noul, Choice, and Score decisions.
 ///
-/// The API key is read from `TYPESAFE_API_KEY` unless supplied explicitly. Requests are sent to the
-/// configured HTTPS API root, redirects are rejected, and response bodies are never included in
-/// errors. No retries or live requests happen during initialization.
+/// The API key is read from `TYPESAFE_API_KEY` for the provider default unless supplied explicitly.
+/// Custom endpoints require an explicit key. Requests use HTTPS, redirects are rejected, and
+/// response bodies are never included in errors. No retries or live requests happen at initialization.
 public struct JevDecisionBackend: DecisionBackend {
     private static let questionID = "swiftdecision"
 
@@ -180,9 +180,10 @@ public struct JevDecisionBackend: DecisionBackend {
     /// Creates a Jev backend.
     ///
     /// - Parameters:
-    ///   - apiKey: API key. When omitted, `TYPESAFE_API_KEY` is read from the environment.
+    ///   - apiKey: API key. `TYPESAFE_API_KEY` is read only for `.providerDefault`; custom endpoints
+    ///     require an explicit key.
     ///   - model: TypeSafe model identifier. Defaults to `jev-latest`.
-    ///   - baseURL: HTTPS API root ending before `/systemone`. Defaults to the official TypeSafe API.
+    ///   - endpoint: Provider default, API root, or complete System One operation URL.
     ///   - timeout: Per-request timeout in seconds.
     ///   - transport: HTTP transport. The default uses URLSession; inject a mock for offline tests.
     ///   - maximumChoiceProbabilityGap: How far the API's `choice` label may fall below the highest
@@ -192,12 +193,18 @@ public struct JevDecisionBackend: DecisionBackend {
     public init(
         apiKey: String? = nil,
         model: String = "jev-latest",
-        baseURL: URL = URL(string: "https://api.typesafe.ai/v1")!,
+        endpoint: APIEndpoint = .providerDefault,
         timeout: TimeInterval = 10,
         transport: any JevHTTPTransport = URLSessionJevHTTPTransport(),
         maximumChoiceProbabilityGap: Double? = nil
     ) throws {
-        let resolvedAPIKey = apiKey ?? ProcessInfo.processInfo.environment["TYPESAFE_API_KEY"]
+        let resolvedAPIKey: String?
+        switch endpoint {
+        case .providerDefault:
+            resolvedAPIKey = apiKey ?? ProcessInfo.processInfo.environment["TYPESAFE_API_KEY"]
+        case .baseURL, .operationURL:
+            resolvedAPIKey = apiKey
+        }
         guard let resolvedAPIKey,
               !resolvedAPIKey.isEmpty,
               resolvedAPIKey.unicodeScalars.allSatisfy({ $0.isASCII && !$0.properties.isWhitespace })
@@ -207,24 +214,7 @@ public struct JevDecisionBackend: DecisionBackend {
         guard !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw JevDecisionBackendError.invalidConfiguration("model must be nonempty")
         }
-        guard let components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false),
-              components.scheme?.lowercased() == "https",
-              components.host != nil,
-              components.user == nil,
-              components.password == nil,
-              components.query == nil,
-              components.fragment == nil
-        else {
-            throw JevDecisionBackendError.invalidConfiguration(
-                "baseURL must be an absolute HTTPS URL without credentials, query, or fragment"
-            )
-        }
-        var endpointComponents = components
-        let basePath = components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        endpointComponents.path = basePath.isEmpty ? "/systemone" : "/\(basePath)/systemone"
-        guard let endpoint = endpointComponents.url else {
-            throw JevDecisionBackendError.invalidConfiguration("baseURL could not form the System One endpoint")
-        }
+        let resolvedEndpoint = try Self.resolve(endpoint)
         guard timeout.isFinite, timeout > 0 else {
             throw JevDecisionBackendError.invalidConfiguration("timeout must be finite and positive")
         }
@@ -238,9 +228,80 @@ public struct JevDecisionBackend: DecisionBackend {
         self.apiKey = resolvedAPIKey
         self.model = model
         self.timeout = timeout
-        self.endpoint = endpoint
+        self.endpoint = resolvedEndpoint
         self.transport = transport
         self.maximumChoiceProbabilityGap = maximumChoiceProbabilityGap
+    }
+
+    /// Creates a Jev backend using the legacy API-root parameter.
+    ///
+    /// This initializer preserves source compatibility. New code should use `endpoint:` to make
+    /// the distinction between an API root and a complete operation URL explicit.
+    ///
+    /// - Parameters:
+    ///   - apiKey: API key. When omitted, `TYPESAFE_API_KEY` is read from the environment.
+    ///   - model: TypeSafe model identifier. Defaults to `jev-latest`.
+    ///   - baseURL: HTTPS API root ending before `/systemone`.
+    ///   - timeout: Per-request timeout in seconds.
+    ///   - transport: HTTP transport. The default uses URLSession; inject a mock for offline tests.
+    ///   - maximumChoiceProbabilityGap: Same Choice-response tolerance as the primary initializer.
+    public init(
+        apiKey: String? = nil,
+        model: String = "jev-latest",
+        baseURL: URL,
+        timeout: TimeInterval = 10,
+        transport: any JevHTTPTransport = URLSessionJevHTTPTransport(),
+        maximumChoiceProbabilityGap: Double? = nil
+    ) throws {
+        try self.init(
+            apiKey: apiKey ?? ProcessInfo.processInfo.environment["TYPESAFE_API_KEY"],
+            model: model,
+            endpoint: .baseURL(baseURL),
+            timeout: timeout,
+            transport: transport,
+            maximumChoiceProbabilityGap: maximumChoiceProbabilityGap
+        )
+    }
+
+    private static func resolve(_ endpoint: APIEndpoint) throws -> URL {
+        switch endpoint {
+        case .providerDefault:
+            return try resolveBaseURL(URL(string: "https://api.typesafe.ai/v1")!)
+        case let .baseURL(baseURL):
+            return try resolveBaseURL(baseURL)
+        case let .operationURL(operationURL):
+            try validateHTTPSURL(operationURL, parameter: "operationURL")
+            return operationURL
+        }
+    }
+
+    private static func resolveBaseURL(_ baseURL: URL) throws -> URL {
+        try validateHTTPSURL(baseURL, parameter: "baseURL")
+        guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
+            throw JevDecisionBackendError.invalidConfiguration("baseURL is not a valid absolute URL")
+        }
+        let basePath = components.percentEncodedPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        components.percentEncodedPath = basePath.isEmpty ? "/systemone" : "/\(basePath)/systemone"
+        guard let endpoint = components.url else {
+            throw JevDecisionBackendError.invalidConfiguration("baseURL could not form the System One endpoint")
+        }
+        return endpoint
+    }
+
+    private static func validateHTTPSURL(_ url: URL, parameter: String) throws {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme?.lowercased() == "https",
+              let host = components.host,
+              !host.isEmpty,
+              components.user == nil,
+              components.password == nil,
+              components.query == nil,
+              components.fragment == nil
+        else {
+            throw JevDecisionBackendError.invalidConfiguration(
+                "\(parameter) must be an absolute HTTPS URL without credentials, query, or fragment"
+            )
+        }
     }
 
     /// Sends one typed decision and maps its probability distribution to prompt option order.

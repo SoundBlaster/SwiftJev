@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Require SwiftDecision 0.8.0 for provider-neutral endpoint configuration.
+
+### Added
+
+- Support provider defaults, API roots, and complete System One operation URLs through `APIEndpoint`.
+- Require an explicit API key when configuring a custom endpoint. The legacy `baseURL:` initializer remains source-compatible.
+
 ## 0.5.0
 
 ### Added
