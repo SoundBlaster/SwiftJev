@@ -291,7 +291,8 @@ public struct JevDecisionBackend: DecisionBackend {
     private static func validateHTTPSURL(_ url: URL, parameter: String) throws {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               components.scheme?.lowercased() == "https",
-              components.host != nil,
+              let host = components.host,
+              !host.isEmpty,
               components.user == nil,
               components.password == nil,
               components.query == nil,
