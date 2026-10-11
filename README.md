@@ -12,7 +12,7 @@
 ```swift
 dependencies: [
     .package(url: "https://github.com/SoundBlaster/SwiftJev.git", from: "0.5.0"),
-    .package(url: "https://github.com/SoundBlaster/SwiftDecision.git", from: "0.7.0")
+    .package(url: "https://github.com/SoundBlaster/SwiftDecision.git", from: "0.8.0")
 ]
 ```
 
@@ -52,16 +52,25 @@ let backend = try SwiftJev.JevDecisionBackend(maximumChoiceProbabilityGap: 0.02)
 
 ## Custom API roots and proxies
 
-The backend defaults to `https://api.typesafe.ai/v1`. To use a compatible proxy such as CoreInfra Hub, pass its HTTPS API root; SwiftJev appends `/systemone`:
+The backend defaults to `https://api.typesafe.ai/v1`. To use a compatible proxy such as CoreInfra Hub, select an API root; SwiftJev appends `/systemone`:
 
 ```swift
 let backend = try SwiftJev.JevDecisionBackend(
     apiKey: ProcessInfo.processInfo.environment["COREINFRA_API_KEY"],
-    baseURL: URL(string: "https://hub.coreinfra.ai/typesafe/api/v1")!
+    endpoint: .baseURL(URL(string: "https://hub.coreinfra.ai/typesafe/api/v1")!)
 )
 ```
 
-The proxy must accept the TypeSafe System One request and response contract. Keep API keys in the host environment or Keychain; do not embed a shared key in an app binary.
+For a gateway that gives you a complete operation URL, use it unchanged:
+
+```swift
+let backend = try SwiftJev.JevDecisionBackend(
+    apiKey: ProcessInfo.processInfo.environment["COREINFRA_API_KEY"],
+    endpoint: .operationURL(URL(string: "https://hub.example/custom/systemone")!)
+)
+```
+
+Custom endpoints require an explicit API key. The URL must be an absolute HTTPS URL without user information, query, or fragment. The proxy must accept the TypeSafe System One request and response contract. Keep API keys in the host environment or Keychain; do not embed a shared key in an app binary.
 
 For iOS apps, store a user-provided API key in Keychain and pass it explicitly to `JevDecisionBackend`. See the [iOS Keychain runbook](Documentation/iOS-Keychain-Runbook.md). Do not ship a shared provider key inside an app binary.
 
