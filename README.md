@@ -107,3 +107,14 @@ the caller decides whether to retry or use a fallback. No automatic recovery is
 added to `predict`. For a total deadline across several inferences, pass the same
 SwiftDecision `DecisionBudget` to each engine call; HTTP timeout is an inactivity
 limit and does not replace that budget.
+
+## Local GLiNER Core ML asset
+
+The optional local backend belongs to SwiftDecision, not to this Jev HTTP provider.
+A separately downloaded, versioned [GLiNER Core ML distribution](https://github.com/SoundBlaster/SwiftDecision/releases/tag/gliner2.5-small-coreml-int8-v1)
+contains INT8 weights, tokenizer files, license notices, conversion provenance,
+and checksums. Follow the [SwiftDecision integration guide](https://github.com/SoundBlaster/SwiftDecision/blob/codex/gliner-model-distribution/Documentation/GLiNERCoreMLBackend.md).
+
+SwiftJev does not bundle, download or run the model. Applications may choose Jev
+through SwiftJev or the local backend through SwiftDecision, with explicit
+provider selection. No automatic provider or credential fallback is introduced.
